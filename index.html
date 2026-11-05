@@ -171,11 +171,11 @@ document.getElementById("birthForm").addEventListener("submit", async function(e
     for (let i = 1; i <= 12; i++) {
       const [x, y] = positions[i];
       const signNumber = ((asc.current_sign - 1 + i - 1) % 12) + 1;
-      const signName = Object.values(signs)[signNumber - 1];
+      const signName = signs[Object.keys(signs)[signNumber - 1]];
 
       chartText += `
         <text x="${x}" y="${y - 13}" text-anchor="middle"
-          font-size="13" fill="#9b3d16">${signNumber}</text>
+          font-size="13" fill="#9b3d16">${signName}</text>
         <text x="${x}" y="${y + 7}" text-anchor="middle"
           font-size="13" fill="#222">${houses[i].join(" ") || "—"}</text>`;
     }
