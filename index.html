@@ -97,7 +97,26 @@ document.getElementById("birthForm").addEventListener("submit", async function(e
 
   const result = document.getElementById("result");
   result.style.display = "block";
-  result.textContent = "आपकी कुंडली तैयार हो रही है...";
+  result.innerHTML = "आपकी जन्मकुंडली तैयार हो रही है...";
+
+  const hindiNames = {
+    Sun: "सूर्य",
+    Moon: "चंद्र",
+    Mars: "मंगल",
+    Mercury: "बुध",
+    Jupiter: "गुरु",
+    Venus: "शुक्र",
+    Saturn: "शनि",
+    Rahu: "राहु",
+    Ketu: "केतु"
+  };
+
+  const hindiSigns = {
+    Aries: "मेष", Taurus: "वृषभ", Gemini: "मिथुन",
+    Cancer: "कर्क", Leo: "सिंह", Virgo: "कन्या",
+    Libra: "तुला", Scorpio: "वृश्चिक", Sagittarius: "धनु",
+    Capricorn: "मकर", Aquarius: "कुंभ", Pisces: "मीन"
+  };
 
   try {
     const name = document.getElementById("person").value;
@@ -125,11 +144,7 @@ document.getElementById("birthForm").addEventListener("submit", async function(e
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          year,
-          month,
-          date,
-          hours,
-          minutes,
+          year, month, date, hours, minutes,
           latitude: Number(locations[0].lat),
           longitude: Number(locations[0].lon),
           timezone: 5.5
@@ -137,27 +152,57 @@ document.getElementById("birthForm").addEventListener("submit", async function(e
       }
     );
 
-    const answer = await response.text();
+    const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(answer);
+    if (!response.ok || !data.output) {
+      throw new Error(JSON.stringify(data));
     }
 
-    let kundli;
-    try {
-      kundli = JSON.parse(answer);
-    } catch {
-      kundli = answer;
+    const kundli = data.output;
+    const asc = kundli.ascendant;
+    const planets = kundli.planets;
+
+    let rows = "";
+
+    for (const [key, planet] of Object.entries(planets)) {
+      if (!hindiNames[key]) continue;
+
+      rows += `
+        <tr>
+          <td>${hindiNames[key]}</td>
+          <td>${hindiSigns[planet.zodiac_sign_name] || planet.zodiac_sign_name}</td>
+          <td>${planet.house_number}</td>
+          <td>${planet.degrees}° ${planet.minutes}'</td>
+          <td>${planet.nakshatra_name}</td>
+        </tr>`;
     }
 
-    result.textContent =
-      "नाम: " + name +
-      "\nजन्म स्थान: " + place +
-      "\n\nकुंडली का परिणाम:\n" +
-      (typeof kundli === "string" ? kundli : JSON.stringify(kundli, null, 2));
-
+    result.innerHTML = `
+      <div style="background:#fff8e9;padding:15px;border-radius:12px;color:#33210b;">
+        <h2 style="text-align:center;">Shandilya Group</h2>
+        <h3 style="text-align:center;">जन्म कुंडली</h3>
+        <p><b>नाम:</b> ${name}</p>
+        <p><b>जन्म स्थान:</b> ${place}</p>
+        <p><b>जन्म लग्न:</b> ${hindiSigns[asc.zodiac_sign_name] || asc.zodiac_sign_name}</p>
+        <p><b>लग्न नक्षत्र:</b> ${asc.nakshatra_name}</p>
+        <h3>ग्रहों की स्थिति</h3>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;text-align:center;">
+            <thead>
+              <tr style="background:#ead5ad;">
+                <th>ग्रह</th>
+                <th>राशि</th>
+                <th>भाव</th>
+                <th>अंश</th>
+                <th>नक्षत्र</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>`;
   } catch (error) {
-    result.textContent = "समस्या: " + error.message;
+    result.innerHTML = "कुंडली बनाने में समस्या: " + error.message;
   }
 });
 </script>
