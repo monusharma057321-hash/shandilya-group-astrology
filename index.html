@@ -97,7 +97,18 @@ footer{text-align:center;background:#713b19;color:white;padding:20px}
 <button type="submit">जन्म विवरण भेजें</button>
 </form>
 <div id="result"></div>
+<div id="kundli-options" style="display:none; margin-top:20px;">
+  <h3>अपनी कुंडली चुनें</h3>
 
+  <button onclick="showKundli('D1')">लग्न कुंडली</button>
+  <button onclick="showKundli('D9')">नवमांश कुंडली</button>
+  <button onclick="showKundli('D10')">दशमांश कुंडली</button>
+  <button onclick="showKundli('D7')">सप्तमांश कुंडली</button>
+  <button onclick="showKundli('Dasha')">महादशा और अंतर्दशा</button>
+  <button onclick="showKundli('Planets')">ग्रहों की स्थिति</button>
+</div>
+
+<div id="kundli-display"></div>
 </section>
 
 <section id="services" class="card">
