@@ -432,18 +432,65 @@ document.getElementById("birthForm").addEventListener("submit", async function(e
     const time = document.getElementById("tob").value;
     const place = document.getElementById("place").value;
 
-    const geoResponse = await fetch(
-      "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=" +
-      encodeURIComponent(place + ", India")
-    );
+const latitude = Number(document.getElementById("latitude").value);
+const longitude = Number(document.getElementById("longitude").value);
 
-    const locations = await geoResponse.json();
-
-    if (!locations.length) throw new Error("जन्म स्थान नहीं मिला।");
-
+if (
+  !Number.isFinite(latitude) ||
+  !Number.isFinite(longitude) ||
+  !document.getElementById("latitude").value ||
+  !document.getElementById("longitude").value
+) {
+  throw new Error("कृपया सूची में से अपना जन्म शहर चुनें।");
+}
     const [year, month, date] = dob.split("-").map(Number);
     const [hours, minutes] = time.split(":").map(Number);
+const timezoneResponse = await fetch(
+  `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m&timezone=auto`
+);
 
+const timezoneData = await timezoneResponse.json();
+const timezoneName = timezoneData.timezone;
+
+if (!timezoneName) {
+  throw new Error("शहर का टाइम ज़ोन नहीं मिला।");
+}
+
+const birthUtcGuess = Date.UTC(year, month - 1, date, hours, minutes);
+let offsetMinutes = 0;
+
+for (let i = 0; i < 3; i++) {
+  const instant = new Date(birthUtcGuess - offsetMinutes * 60000);
+
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: timezoneName,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(instant);
+
+  const values = {};
+  parts.forEach(p => {
+    if (p.type !== "literal") values[p.type] = Number(p.value);
+  });
+
+  const localAsUTC = Date.UTC(
+    values.year,
+    values.month - 1,
+    values.day,
+    values.hour,
+    values.minute,
+    values.second
+  );
+
+  offsetMinutes = (localAsUTC - instant.getTime()) / 60000;
+}
+
+const timezone = offsetMinutes / 60;
     const response = await fetch(
       "https://shandilya-kundli-api.monusharma057321.workers.dev",
       {
@@ -451,9 +498,9 @@ document.getElementById("birthForm").addEventListener("submit", async function(e
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           year, month, date, hours, minutes,
-          latitude: Number(locations[0].lat),
-          longitude: Number(locations[0].lon),
-          timezone: 5.5
+          latitude: latitude,
+          longitude: longitude,
+          timezone: timezone
         })
       }
     );
@@ -535,6 +582,85 @@ document.getElementById("birthForm").addEventListener("submit", async function(e
   } catch (error) {
     result.textContent = "समस्या: " + error.message;
   }
+});
+</script>
+  <script>
+const placeInput = document.getElementById("place");
+const suggestionBox = document.getElementById("citySuggestions");
+const latitudeInput = document.getElementById("latitude");
+const longitudeInput = document.getElementById("longitude");
+
+let cityTimer;
+let cityResults = [];
+
+placeInput.addEventListener("input", function () {
+  clearTimeout(cityTimer);
+
+  latitudeInput.value = "";
+  longitudeInput.value = "";
+  suggestionBox.innerHTML = "";
+
+  const query = placeInput.value.trim();
+
+  if (query.length < 2) return;
+
+  suggestionBox.innerHTML = "शहर खोज रहे हैं...";
+
+  cityTimer = setTimeout(async function () {
+    try {
+      const url =
+        "https://photon.komoot.io/api/?q=" +
+        encodeURIComponent(query) +
+        "&limit=7&lang=en";
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      cityResults = data.features || [];
+      suggestionBox.innerHTML = "";
+
+      if (cityResults.length === 0) {
+        suggestionBox.innerHTML = "कोई शहर नहीं मिला।";
+        return;
+      }
+
+      cityResults.forEach(function (item, index) {
+        const p = item.properties;
+        const parts = [
+          p.name,
+          p.state,
+          p.country
+        ].filter(Boolean);
+
+        const option = document.createElement("button");
+        option.type = "button";
+        option.textContent = parts.join(", ");
+        option.style.cssText =
+          "display:block;width:100%;padding:12px;text-align:left;background:white;color:#333;border:1px solid #ddd;margin:0;";
+
+        option.addEventListener("click", function () {
+          const selected = cityResults[index];
+          const coords = selected.geometry.coordinates;
+
+          placeInput.value = [
+            selected.properties.name,
+            selected.properties.state,
+            selected.properties.country
+          ].filter(Boolean).join(", ");
+
+          longitudeInput.value = coords[0];
+          latitudeInput.value = coords[1];
+
+          suggestionBox.innerHTML = "";
+        });
+
+        suggestionBox.appendChild(option);
+      });
+
+    } catch (error) {
+      suggestionBox.innerHTML = "शहर खोजने में समस्या हुई।";
+    }
+  }, 500);
 });
 </script>
 <!-- WhatsApp Button -->
