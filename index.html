@@ -230,7 +230,7 @@ document.getElementById("birthForm").addEventListener("submit", async function(e
       const signName = signs[Object.keys(signs)[signNumber - 1]];
 
       chartText += `
-        <text x="${x}" y="${y - 13}" text-anchor="middle"
+        <text x="${x}" y="${y - 5}" text-anchor="middle"
           font-size="13" fill="#9b3d16">${signName}</text>
         <text x="${x}" y="${y + 7}" text-anchor="middle"
           font-size="13" fill="#222">${houses[i].join(" ") || "—"}</text>`;
