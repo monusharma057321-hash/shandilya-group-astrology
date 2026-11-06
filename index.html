@@ -289,8 +289,31 @@ footer {
 <label>जन्म का समय</label>
 <input id="tob" type="time" required>
 
+
 <label>जन्म स्थान / शहर</label>
-<input id="place" type="text" placeholder="जैसे Neem ka Thana" required>
+<input
+  id="place"
+  type="text"
+  placeholder="शहर का नाम लिखें..."
+  list="cityList"
+  autocomplete="off"
+  required
+/>
+
+<datalist id="cityList">
+  <option value="Neem Ka Thana, Rajasthan"></option>
+  <option value="Jaipur, Rajasthan"></option>
+  <option value="Delhi, India"></option>
+  <option value="Gurugram, Haryana"></option>
+  <option value="Mumbai, Maharashtra"></option>
+  <option value="Kota, Rajasthan"></option>
+  <option value="Sikar, Rajasthan"></option>
+  <option value="Ajmer, Rajasthan"></option>
+  <option value="Jodhpur, Rajasthan"></option>
+  <option value="Udaipur, Rajasthan"></option>
+  <option value="Bikaner, Rajasthan"></option>
+</datalist>
+
 
 <button type="submit">जन्म विवरण भेजें</button>
 </form>
