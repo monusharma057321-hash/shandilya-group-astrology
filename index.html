@@ -671,6 +671,8 @@ const timezone = offsetMinutes / 60;
     window.currentKundli = kundli;
     const asc = kundli.ascendant;
     const houses = {};
+    window.currentPlanets = kundli.planets;
+    console.log("ग्रहों का पूरा डेटा:", kundli.planets);
 
     for (let i = 1; i <= 12; i++) houses[i] = [];
 
@@ -738,6 +740,12 @@ const timezone = offsetMinutes / 60;
             <tbody>${rows}</tbody>
           </table>
         </div>
+
+        <details style="margin-top:15px;">
+          <summary>ग्रहों का पूरा तकनीकी डेटा देखें</summary>
+          <pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;">${JSON.stringify(kundli.planets, null, 2)}</pre>
+        </details>
+
       </div>`;
     document.getElementById("downloadKundliPdf").style.display = "block";
   } catch (error) {
