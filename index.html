@@ -668,6 +668,7 @@ const timezone = offsetMinutes / 60;
     if (!response.ok || !data.output) throw new Error("कुंडली डेटा प्राप्त नहीं हुआ।");
 
     const kundli = data.output;
+    window.currentKundli = kundli;
     const asc = kundli.ascendant;
     const houses = {};
 
