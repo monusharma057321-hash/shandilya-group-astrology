@@ -1287,11 +1287,12 @@ function showKundli(type) {
 </script>
 <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
   <script>
+
 function calculateBasicPanchang() {
   const result = document.getElementById("panchang-result");
 
   if (!window.Astronomy) {
-    result.innerHTML = "गणना लाइब्रेरी लोड नहीं हुई।";
+    result.textContent = "गणना लाइब्रेरी लोड नहीं हुई।";
     return;
   }
 
@@ -1307,6 +1308,7 @@ function calculateBasicPanchang() {
 
   const diff = (moonLong - sunLong + 360) % 360;
   const tithiIndex = Math.floor(diff / 12);
+
   const paksha = tithiIndex < 15 ? "शुक्ल पक्ष" : "कृष्ण पक्ष";
 
   const tithis = [
@@ -1345,22 +1347,43 @@ function calculateBasicPanchang() {
     ((sunLong + moonLong) % 360) / (360 / 27)
   );
 
+  const dateElement = document.getElementById("panchang-date");
+  if (dateElement) {
+    dateElement.textContent = now.toLocaleDateString("hi-IN", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric"
+    });
+  }
+
   result.innerHTML = `
-    <h3>आज का पंचांग</h3>
-    <p><b>तिथि:</b> ${tithi}</p>
-    <p><b>पक्ष:</b> ${paksha}</p>
-    <p><b>नक्षत्र:</b> ${nakshatras[nakIndex]}</p>
-    <p><b>योग:</b> ${yogas[yogaIndex]}</p>
-    <p style="color:#a66a28;font-size:12px;">
-      प्रारंभिक खगोलीय गणना; प्रमाणित पंचांग नहीं।
-    </p>
+    <div style="font-size:18px;color:#f4d47e;">
+      ${tithi}
+    </div>
+    <div style="margin-top:8px;">${paksha}</div>
   `;
+
+  document.getElementById("p-nakshatra").textContent =
+    nakshatras[nakIndex];
+
+  document.getElementById("p-yoga").textContent =
+    yogas[yogaIndex];
+
+  [
+    "p-sunrise", "p-sunset", "p-rahukaal",
+    "p-abhijit", "p-hora", "p-choghadiya"
+  ].forEach(id => {
+    document.getElementById(id).textContent =
+      "सही गणना अगले चरण में जोड़ी जाएगी";
+  });
 }
 
 document.addEventListener(
   "DOMContentLoaded",
   calculateBasicPanchang
 );
+
 </script>
 </body>
 </html>
