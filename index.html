@@ -291,6 +291,17 @@ footer {
   color: #805b42;
   font-size: 12px;
 }
+ .app-screen {
+  display: none !important;
+}
+
+.app-screen.active {
+  display: block !important;
+}
+
+#home.active {
+  display: block !important;
+} 
 </style>
 
 
@@ -318,7 +329,7 @@ footer {
   </button>
   <b id="screen-title" style="margin-left:15px;">Shandilya Group</b>
 </div>
-<section id="home" class="card" style="text-align:center; padding:32px 20px; background:linear-gradient(145deg,#fffaf0,#f5e5c9); border:1px solid #c79a4b;">
+<section id="home" class="card app-screen active" style="text-align:center; padding:32px 20px; background:linear-gradient(145deg,#fffaf0,#f5e5c9); border:1px solid #c79a4b;">
   <p style="color:#9a5429; font-weight:bold; letter-spacing:2px;">॥ श्री गणेशाय नमः ॥</p>
 
   <h2 style="font-size:27px; color:#64152d;">Shandilya Group</h2>
