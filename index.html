@@ -743,7 +743,10 @@ const timezone = offsetMinutes / 60;
 
         <details style="margin-top:15px;">
           <summary>ग्रहों का पूरा तकनीकी डेटा देखें</summary>
-          <pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;">${JSON.stringify(kundli.planets, null, 2)}</pre>
+          <pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;">${JSON.stringify({
+  ascendant: kundli.ascendant,
+  planets: kundli.planets
+}, null, 2)}
         </details>
 
       </div>`;
