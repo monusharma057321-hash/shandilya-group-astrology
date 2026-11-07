@@ -917,10 +917,181 @@ function showKundli(type) {
     return;
   }
 
-  if (type === "Dasha") {
-    display.innerHTML =
-      "<h3>महादशा और अंतर्दशा</h3>" +
-      "<p>दशा की जानकारी API से अभी उपलब्ध नहीं है।</p>";
+    if (type === "Dasha") {
+
+    const moon = kundli.planets.Moon;
+
+    if (!moon) {
+      display.innerHTML = "चंद्रमा की स्थिति उपलब्ध नहीं है।";
+      return;
+    }
+
+    const signNumbers = {
+      Aries: 0, Taurus: 1, Gemini: 2, Cancer: 3,
+      Leo: 4, Virgo: 5, Libra: 6, Scorpio: 7,
+      Sagittarius: 8, Capricorn: 9, Aquarius: 10, Pisces: 11
+    };
+
+    let moonLongitude = Number(moon.fullDegree);
+
+    if (!Number.isFinite(moonLongitude)) {
+      const sign = signNumbers[moon.zodiac_sign_name];
+      if (sign === undefined) {
+        display.innerHTML = "चंद्रमा की राशि का डेटा नहीं मिला।";
+        return;
+      }
+
+      moonLongitude =
+        sign * 30 +
+        Number(moon.degrees || 0) +
+        Number(moon.minutes || 0) / 60;
+    }
+
+    const dob = document.getElementById("dob").value;
+    const tob = document.getElementById("tob").value;
+
+    if (!dob || !tob) {
+      display.innerHTML = "पहले जन्म तारीख और समय भरकर कुंडली बनाएँ।";
+      return;
+    }
+
+    const [y, m, d] = dob.split("-").map(Number);
+    const [h, min] = tob.split(":").map(Number);
+    const birthDate = new Date(y, m - 1, d, h, min);
+
+    const yearMs = 365.2425 * 24 * 60 * 60 * 1000;
+
+    const lords = [
+      { name: "केतु", years: 7 },
+      { name: "शुक्र", years: 20 },
+      { name: "सूर्य", years: 6 },
+      { name: "चंद्र", years: 10 },
+      { name: "मंगल", years: 7 },
+      { name: "राहु", years: 18 },
+      { name: "गुरु", years: 16 },
+      { name: "शनि", years: 19 },
+      { name: "बुध", years: 17 }
+    ];
+
+    const nakshatraSpan = 360 / 27;
+    const nakIndex = Math.floor(moonLongitude / nakshatraSpan);
+    const elapsed =
+      (moonLongitude - nakIndex * nakshatraSpan) / nakshatraSpan;
+
+    const firstLord = nakIndex % 9;
+    const firstBalance = lords[firstLord].years * (1 - elapsed);
+
+    function makePeriods(start, parentYears, firstIndex) {
+      const periods = [];
+      let current = start;
+
+      for (let i = 0; i < 9; i++) {
+        const lordIndex = (firstIndex + i) % 9;
+        const lord = lords[lordIndex];
+        const duration = parentYears * lord.years / 120;
+        const end = current + duration * yearMs;
+
+        periods.push({
+          lord,
+          start: current,
+          end,
+          years: duration
+        });
+
+        current = end;
+      }
+
+      return periods;
+    }
+
+    let mdStart =
+      birthDate.getTime() - elapsed * lords[firstLord].years * yearMs;
+
+    const mahadashas = [];
+    let currentStart = mdStart;
+
+    for (let i = 0; i < 9; i++) {
+      const index = (firstLord + i) % 9;
+      const lord = lords[index];
+      const duration = i === 0 ? lords[firstLord].years : lord.years;
+      const end = currentStart + duration * yearMs;
+
+      mahadashas.push({
+        lord,
+        start: currentStart,
+        end,
+        years: duration
+      });
+
+      currentStart = end;
+    }
+
+    const now = Date.now();
+    const activeMD = mahadashas.find(p => now >= p.start && now < p.end);
+
+    if (!activeMD) {
+      display.innerHTML = "वर्तमान महादशा की गणना नहीं हो पाई।";
+      return;
+    }
+
+    const antardashas = makePeriods(
+      activeMD.start,
+      activeMD.years,
+      lords.indexOf(activeMD.lord)
+    );
+
+    const activeAD = antardashas.find(p => now >= p.start && now < p.end);
+
+    const pratyantardashas = activeAD
+      ? makePeriods(
+          activeAD.start,
+          activeAD.years,
+          lords.indexOf(activeAD.lord)
+        )
+      : [];
+
+    const activePD = pratyantardashas.find(
+      p => now >= p.start && now < p.end
+    );
+
+    function dateText(value) {
+      return new Date(value).toLocaleDateString("hi-IN");
+    }
+
+    function makeTable(title, periods, active) {
+      let html = `<h3>${title}</h3>
+      <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;text-align:center;">
+      <tr style="background:#ead5ad;">
+      <th>दशा</th><th>शुरुआत</th><th>समाप्ति</th></tr>`;
+
+      for (const p of periods) {
+        const selected = active && p.lord.name === active.lord.name &&
+          p.start === active.start;
+
+        html += `<tr style="${selected ? "background:#f5dfad;font-weight:bold;" : ""}">
+        <td>${p.lord.name}${selected ? " (वर्तमान)" : ""}</td>
+        <td>${dateText(p.start)}</td>
+        <td>${dateText(p.end)}</td>
+        </tr>`;
+      }
+
+      return html + "</table></div>";
+    }
+
+    display.innerHTML = `
+      <div style="background:#fff8e9;padding:12px;border-radius:12px;">
+        <h3 style="text-align:center;">विंशोत्तरी दशा</h3>
+        <p><b>जन्म चंद्र नक्षत्र:</b> ${moon.nakshatra_name || "उपलब्ध नहीं"}</p>
+        <p><b>वर्तमान महादशा:</b> ${activeMD.lord.name}</p>
+        <p><b>वर्तमान अंतर्दशा:</b> ${activeAD ? activeAD.lord.name : "उपलब्ध नहीं"}</p>
+        <p><b>वर्तमान प्रत्यंतर दशा:</b> ${activePD ? activePD.lord.name : "उपलब्ध नहीं"}</p>
+        ${makeTable("महादशा", mahadashas, activeMD)}
+        ${makeTable("अंतर्दशा", antardashas, activeAD)}
+        ${makeTable("प्रत्यंतर दशा", pratyantardashas, activePD)}
+      </div>
+    `;
+
     return;
   }
 
