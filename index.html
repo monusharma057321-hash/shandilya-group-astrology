@@ -1,4 +1,4 @@
-
+5
 <!DOCTYPE html>
 <html lang="hi">
   <link rel="icon" type="image/png"
@@ -897,5 +897,14 @@ window.addEventListener("popstate", function() {
 
 showScreen("home", false);
 </script>
+  <script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js")
+      .then(() => console.log("App ready"))
+      .catch((error) => console.log("App error:", error));
+  });
+}
+  </script>
 </body>
 </html>
