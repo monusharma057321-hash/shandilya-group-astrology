@@ -1,0 +1,15 @@
+{
+  "name": "Shandilya Group",
+  "short_name": "SG",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#071b49",
+  "theme_color": "#071b49",
+  "icons": [
+    {
+      "src": "file_0000000046c08211a6fc95c8a25a5b92.png",
+      "sizes": "any",
+      "type": "image/png"
+    }
+  ]
+}
