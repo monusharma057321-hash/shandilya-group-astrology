@@ -906,5 +906,201 @@ if ("serviceWorker" in navigator) {
   });
 }
   </script>
+  <script>
+function showKundli(type) {
+
+  const kundli = window.currentKundli;
+  const display = document.getElementById("kundli-display");
+
+  if (!kundli || !kundli.ascendant || !kundli.planets) {
+    display.innerHTML = "पहले जन्म कुंडली बनाएँ।";
+    return;
+  }
+
+  if (type === "Dasha") {
+    display.innerHTML =
+      "<h3>महादशा और अंतर्दशा</h3>" +
+      "<p>दशा की जानकारी API से अभी उपलब्ध नहीं है।</p>";
+    return;
+  }
+
+  const divisions = {
+    D1: 1,
+    D9: 9,
+    D10: 10,
+    D7: 7,
+    Planets: 1
+  };
+
+  const titles = {
+    D1: "लग्न कुंडली (D1)",
+    D9: "नवमांश कुंडली (D9)",
+    D10: "दशमांश कुंडली (D10)",
+    D7: "सप्तमांश कुंडली (D7)",
+    Planets: "ग्रहों की स्थिति"
+  };
+
+  const division = divisions[type];
+
+  if (!division) return;
+
+  const signsHindi = [
+    "मेष", "वृषभ", "मिथुन", "कर्क",
+    "सिंह", "कन्या", "तुला", "वृश्चिक",
+    "धनु", "मकर", "कुंभ", "मीन"
+  ];
+
+  const names = {
+    Sun: "सूर्य",
+    Moon: "चंद्र",
+    Mars: "मंगल",
+    Mercury: "बुध",
+    Jupiter: "गुरु",
+    Venus: "शुक्र",
+    Saturn: "शनि",
+    Rahu: "राहु",
+    Ketu: "केतु"
+  };
+
+  function vargaSign(fullDegree, d) {
+
+    const sign = Math.floor(fullDegree / 30);
+    const degree = fullDegree % 30;
+
+    if (d === 1) return sign;
+
+    const part = Math.min(
+      d - 1,
+      Math.floor(degree / (30 / d))
+    );
+
+    let start = sign;
+
+    if (d === 9) {
+      if (sign % 3 === 1) start = sign + 8;
+      if (sign % 3 === 2) start = sign + 4;
+    }
+
+    if (d === 10 && sign % 2 === 1) {
+      start = sign + 8;
+    }
+
+    if (d === 7 && sign % 2 === 1) {
+      start = sign + 6;
+    }
+
+    return (start + part) % 12;
+  }
+
+  const ascSign = vargaSign(
+    kundli.ascendant.fullDegree,
+    division
+  );
+
+  const houses = {};
+
+  for (let i = 1; i <= 12; i++) {
+    houses[i] = [];
+  }
+
+  const rows = [];
+
+  for (const [key, planet] of Object.entries(kundli.planets)) {
+
+    if (!names[key]) continue;
+
+    const sign = vargaSign(
+      planet.fullDegree,
+      division
+    );
+
+    const house = (sign - ascSign + 12) % 12 + 1;
+
+    houses[house].push(names[key]);
+
+    rows.push(`
+      <tr>
+        <td>${names[key]}</td>
+        <td>${signsHindi[sign]}</td>
+        <td>${house}</td>
+        <td>${planet.degrees}° ${planet.minutes}'</td>
+        <td>${planet.nakshatra_name}</td>
+      </tr>
+    `);
+  }
+
+  const positions = {
+    1: [200, 103],
+    2: [103, 38],
+    3: [38, 103],
+    4: [103, 200],
+    5: [38, 298],
+    6: [103, 363],
+    7: [200, 298],
+    8: [298, 363],
+    9: [363, 298],
+    10: [298, 200],
+    11: [363, 103],
+    12: [298, 38]
+  };
+
+  let chartText = "";
+
+  for (let i = 1; i <= 12; i++) {
+
+    const [x, y] = positions[i];
+    const sign = (ascSign + i - 1) % 12;
+
+    chartText += `
+      <text x="${x}" y="${y - 13}"
+        text-anchor="middle"
+        font-size="13" fill="#9b3d16">
+        ${signsHindi[sign]}
+      </text>
+
+      <text x="${x}" y="${y + 7}"
+        text-anchor="middle"
+        font-size="13" fill="#222">
+        ${houses[i].join(" ") || "—"}
+      </text>
+    `;
+  }
+
+  display.innerHTML = `
+    <div style="background:#fff8e9;padding:12px;border-radius:12px;">
+      <h3 style="text-align:center;">${titles[type]}</h3>
+
+      <p><b>वर्ग लग्न:</b> ${signsHindi[ascSign]}</p>
+
+      <svg viewBox="0 0 400 400"
+        style="width:100%;max-width:430px;display:block;margin:auto;background:#fffdf5;">
+
+        <rect x="5" y="5" width="390" height="390"
+          fill="none" stroke="#9b3d16" stroke-width="2"/>
+
+        <path d="M5 5 L395 395 M395 5 L5 395 M200 5 L395 200 L200 395 L5 200 Z"
+          fill="none" stroke="#9b3d16" stroke-width="1.5"/>
+
+        ${chartText}
+      </svg>
+
+      <h3>ग्रहों की स्थिति</h3>
+
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;text-align:center;">
+          <tr style="background:#ead5ad;">
+            <th>ग्रह</th>
+            <th>राशि</th>
+            <th>भाव</th>
+            <th>मूल अंश</th>
+            <th>नक्षत्र</th>
+          </tr>
+          ${rows.join("")}
+        </table>
+      </div>
+    </div>
+  `;
+}
+</script>
 </body>
 </html>
