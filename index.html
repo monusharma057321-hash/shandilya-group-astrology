@@ -527,16 +527,52 @@ style="display:none;">
   </details>
 </section>
 <section id="panchang" class="card app-screen">
+
   <div style="text-align:center;">
     <p style="color:#a66a28;font-weight:bold;">SHANDILYA GROUP</p>
-    <h2>🌙 आज का पंचांग</h2>
-    <p>दैनिक वैदिक पंचांग एवं शुभ-अशुभ समय</p>
+    <h2>🌙 दैनिक पंचांग</h2>
+    <p>संपूर्ण वैदिक पंचांग</p>
   </div>
 
-  <div id="panchang-result">
-    पंचांग की जानकारी यहाँ दिखाई जाएगी।
+  <div class="card">
+    <label>📍 अपना शहर चुनें</label>
+    <input id="panchang-place" type="text"
+      placeholder="शहर का नाम लिखें">
+
+    <label>📅 तारीख चुनें</label>
+    <input id="panchang-date" type="date">
+
+    <button onclick="calculateBasicPanchang()">
+      पंचांग देखें
+    </button>
   </div>
+
+  
+<div id="panchang-result">
+
+  <h3>📅 पंचांग विवरण</h3>
+
+  <p>तिथि: <span id="p-tithi">—</span></p>
+  <p>पक्ष: <span id="p-paksha">—</span></p>
+  <p>नक्षत्र: <span id="p-nakshatra">—</span></p>
+  <p>योग: <span id="p-yoga">—</span></p>
+  <p>करण: <span id="p-karana">—</span></p>
+
+  <hr>
+
+  <h3>☀️ सूर्य एवं शुभ-अशुभ समय</h3>
+  <p>सूर्योदय: <span id="p-sunrise">—</span></p>
+  <p>सूर्यास्त: <span id="p-sunset">—</span></p>
+  <p>राहुकाल: <span id="p-rahukaal">—</span></p>
+  <p>अभिजीत मुहूर्त: <span id="p-abhijit">—</span></p>
+  <p>होरा: <span id="p-hora">—</span></p>
+  <p>चौघड़िया: <span id="p-choghadiya">—</span></p>
+
+</div>
+
+
 </section>
+
 <section id="contact" class="card app-screen" style="text-align:center; background:linear-gradient(145deg,#fffaf0,#f3e2c5); border:1px solid #c79a4b;">
   <p style="color:#a66a28; font-weight:bold;">SHANDILYA GROUP</p>
   <h2 style="font-size:25px;">हमसे संपर्क करें</h2>
@@ -1296,7 +1332,10 @@ function calculateBasicPanchang() {
     return;
   }
 
-  const now = new Date();
+  const dateInput = document.getElementById("panchang-date");
+const now = dateInput && dateInput.value
+  ? new Date(dateInput.value + "T12:00:00")
+  : new Date();
   const sun = Astronomy.SunPosition(now);
   const moon = Astronomy.EclipticGeoMoon(now);
 
@@ -1343,6 +1382,21 @@ function calculateBasicPanchang() {
   ];
 
   const nakIndex = Math.floor(moonLong / (360 / 27));
+  const karanaIndex = Math.floor(diff / 6);
+
+const karanas = [
+  "बव", "बालव", "कौलव", "तैतिल",
+  "गर", "वणिज", "विष्टि", "शकुनि",
+  "चतुष्पद", "नाग", "किंस्तुघ्न"
+];
+
+const karana = karanaIndex === 0
+  ? "किंस्तुघ्न"
+  : karanaIndex >= 57
+    ? ["शकुनि", "चतुष्पद", "नाग"][karanaIndex - 57]
+    : ["बव", "बालव", "कौलव", "तैतिल", "गर", "वणिज", "विष्टि"][(karanaIndex - 1) % 7];
+
+document.getElementById("p-karana").textContent = karana;
   const yogaIndex = Math.floor(
     ((sunLong + moonLong) % 360) / (360 / 27)
   );
@@ -1357,18 +1411,10 @@ function calculateBasicPanchang() {
     });
   }
 
-  result.innerHTML = `
-    <div style="font-size:18px;color:#f4d47e;">
-      ${tithi}
-    </div>
-    <div style="margin-top:8px;">${paksha}</div>
-  `;
-
-  document.getElementById("p-nakshatra").textContent =
-    nakshatras[nakIndex];
-
-  document.getElementById("p-yoga").textContent =
-    yogas[yogaIndex];
+  document.getElementById("p-tithi").textContent = tithi;
+document.getElementById("p-paksha").textContent = paksha;
+document.getElementById("p-nakshatra").textContent = nakshatras[nakIndex];
+document.getElementById("p-yoga").textContent = yogas[yogaIndex];
 
   [
     "p-sunrise", "p-sunset", "p-rahukaal",
