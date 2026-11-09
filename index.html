@@ -302,13 +302,21 @@ footer {
   display: none !important;
 }
 
-.app-screen.active {
+.app-screen.active:not(.home-services) {
   display: block !important;
 }
 
 #home.active {
   display: block !important;
-} 
+}
+
+.home-services {
+  display: none !important;
+}
+
+.home-services.active {
+  display: block !important;
+}
 </style>
 
 
