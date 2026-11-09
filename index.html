@@ -355,7 +355,7 @@ footer {
     अपनी जन्मकुंडली बनाएँ
   </a>
 </section>
-<section class="card app-screen home-services">
+<section class="card app-screen home-services active">
   <h2>🔮 ज्योतिष सेवाएँ</h2>
 
   <div class="service-grid">
@@ -902,8 +902,10 @@ function showScreen(id, addHistory = true) {
   const screens = document.querySelectorAll(".app-screen");
 
   screens.forEach(screen => {
-    screen.classList.toggle("active", screen.id === id);
-  });
+  screen.classList.toggle("active", screen.id === id);
+});
+
+document.querySelector(".home-services")?.classList.toggle("active", id === "home");
 
   const topbar = document.getElementById("app-topbar");
   if (topbar) {
