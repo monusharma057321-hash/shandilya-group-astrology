@@ -1334,169 +1334,461 @@ function showKundli(type) {
 <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
   <script>
 
+const cityInput = document.getElementById("panchang-place");
+const cityResults = document.getElementById("panchang-city-results");
+const dateInput = document.getElementById("panchang-date");
+
+let selectedCity = null;
+let cityTimer = null;
+
+// शहर की खोज
+cityInput.addEventListener("input", function () {
+  clearTimeout(cityTimer);
+  selectedCity = null;
+  cityResults.innerHTML = "";
+
+  if (cityInput.value.trim().length < 3) return;
+
+  cityResults.textContent = "शहर खोज रहे हैं...";
+
+  cityTimer = setTimeout(async () => {
+    try {
+      const response = await fetch(
+        "https://geocoding-api.open-meteo.com/v1/search?name=" +
+        encodeURIComponent(cityInput.value.trim()) +
+        "&count=8&language=hi&format=json"
+      );
+
+      const data = await response.json();
+      cityResults.innerHTML = "";
+
+      if (!data.results || !data.results.length) {
+        cityResults.textContent = "शहर नहीं मिला।";
+        return;
+      }
+
+      data.results.forEach(city => {
+        const item = document.createElement("div");
+
+        item.textContent = [
+          city.name,
+          city.admin1,
+          city.country
+        ].filter(Boolean).join(", ");
+
+        item.style.cssText =
+          "padding:12px;border-bottom:1px solid #ddd;cursor:pointer;background:white;color:#333;";
+
+        item.onclick = function () {
+          selectedCity = {
+            latitude: city.latitude,
+            longitude: city.longitude,
+            timezone: city.timezone,
+            name: city.name
+          };
+
+          cityInput.value = item.textContent;
+          cityResults.innerHTML = "";
+
+          dateInput.value = localDate(selectedCity.timezone);
+
+          calculateBasicPanchang();
+        };
+
+        cityResults.appendChild(item);
+      });
+
+    } catch (error) {
+      cityResults.textContent = "शहर खोजने में समस्या हुई।";
+    }
+  }, 400);
+});
+
+
+// शहर के अनुसार स्थानीय तारीख
+function localDate(timezone) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(new Date());
+
+  const v = {};
+  parts.forEach(p => {
+    if (p.type !== "literal") v[p.type] = p.value;
+  });
+
+  return `${v.year}-${v.month}-${v.day}`;
+}
+
+
+// शहर के स्थानीय समय को UTC में बदलना
+function localToUTC(dateString, timeString, timezone) {
+  const [y, m, d] = dateString.split("-").map(Number);
+  const [h, min] = timeString.split(":").map(Number);
+
+  const target = Date.UTC(y, m - 1, d, h, min);
+  let utc = target;
+
+  for (let i = 0; i < 4; i++) {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23"
+    }).formatToParts(new Date(utc));
+
+    const v = {};
+    parts.forEach(p => {
+      if (p.type !== "literal") v[p.type] = Number(p.value);
+    });
+
+    const localUTC = Date.UTC(
+      v.year, v.month - 1, v.day,
+      v.hour, v.minute, v.second
+    );
+
+    utc += target - localUTC;
+  }
+
+  return new Date(utc);
+}
+
+
+// समय दिखाना
+function timeText(date, timezone) {
+  return new Intl.DateTimeFormat("hi-IN", {
+    timeZone: timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true
+  }).format(date.date ? date.date : date);
+}
+
+
+// पंचांग गणना
 function calculateBasicPanchang() {
   const result = document.getElementById("panchang-result");
 
   if (!window.Astronomy) {
-    result.textContent = "गणना लाइब्रेरी लोड नहीं हुई।";
+    result.textContent = "खगोलीय गणना लाइब्रेरी लोड नहीं हुई।";
     return;
   }
 
-  const dateInput = document.getElementById("panchang-date");
-const now = dateInput && dateInput.value
-  ? new Date(dateInput.value + "T12:00:00")
-  : new Date();
-  const sun = Astronomy.SunPosition(now);
-  const moon = Astronomy.EclipticGeoMoon(now);
-
-  const ayanamsa = 23.85675 +
-    (now.getFullYear() - 2000) * 0.013968;
-
-  const sunLong = (sun.elon - ayanamsa + 360) % 360;
-  const moonLong = (moon.lon - ayanamsa + 360) % 360;
-
-  const diff = (moonLong - sunLong + 360) % 360;
-  const tithiIndex = Math.floor(diff / 12);
-
-  const paksha = tithiIndex < 15 ? "शुक्ल पक्ष" : "कृष्ण पक्ष";
-
-  const tithis = [
-    "प्रतिपदा", "द्वितीया", "तृतीया", "चतुर्थी",
-    "पंचमी", "षष्ठी", "सप्तमी", "अष्टमी",
-    "नवमी", "दशमी", "एकादशी", "द्वादशी",
-    "त्रयोदशी", "चतुर्दशी", "पूर्णिमा"
-  ];
-
-  const tithi = tithiIndex === 29
-    ? "अमावस्या"
-    : tithis[tithiIndex % 15];
-
-  const nakshatras = [
-    "अश्विनी", "भरणी", "कृत्तिका", "रोहिणी",
-    "मृगशिरा", "आर्द्रा", "पुनर्वसु", "पुष्य",
-    "आश्लेषा", "मघा", "पूर्वा फाल्गुनी", "उत्तरा फाल्गुनी",
-    "हस्त", "चित्रा", "स्वाती", "विशाखा",
-    "अनुराधा", "ज्येष्ठा", "मूल", "पूर्वाषाढ़ा",
-    "उत्तराषाढ़ा", "श्रवण", "धनिष्ठा", "शतभिषा",
-    "पूर्वाभाद्रपद", "उत्तराभाद्रपद", "रेवती"
-  ];
-
-  const yogas = [
-    "विष्कुम्भ", "प्रीति", "आयुष्मान", "सौभाग्य",
-    "शोभन", "अतिगण्ड", "सुकर्मा", "धृति",
-    "शूल", "गण्ड", "वृद्धि", "ध्रुव",
-    "व्याघात", "हर्षण", "वज्र", "सिद्धि",
-    "व्यतीपात", "वरीयान", "परिघ", "शिव",
-    "सिद्ध", "साध्य", "शुभ", "शुक्ल",
-    "ब्रह्म", "इन्द्र", "वैधृति"
-  ];
-
-  const nakIndex = Math.floor(moonLong / (360 / 27));
-  const karanaIndex = Math.floor(diff / 6);
-
-const karanas = [
-  "बव", "बालव", "कौलव", "तैतिल",
-  "गर", "वणिज", "विष्टि", "शकुनि",
-  "चतुष्पद", "नाग", "किंस्तुघ्न"
-];
-
-const karana = karanaIndex === 0
-  ? "किंस्तुघ्न"
-  : karanaIndex >= 57
-    ? ["शकुनि", "चतुष्पद", "नाग"][karanaIndex - 57]
-    : ["बव", "बालव", "कौलव", "तैतिल", "गर", "वणिज", "विष्टि"][(karanaIndex - 1) % 7];
-
-document.getElementById("p-karana").textContent = karana;
-  const yogaIndex = Math.floor(
-    ((sunLong + moonLong) % 360) / (360 / 27)
-  );
-
-  const dateElement = document.getElementById("panchang-date");
-  if (dateElement) {
-    dateElement.textContent = now.toLocaleDateString("hi-IN", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric"
-    });
+  if (!selectedCity) {
+    result.textContent = "कृपया पहले सूची में से अपना शहर चुनें।";
+    return;
   }
 
-  document.getElementById("p-tithi").textContent = tithi;
-document.getElementById("p-paksha").textContent = paksha;
-document.getElementById("p-nakshatra").textContent = nakshatras[nakIndex];
-document.getElementById("p-yoga").textContent = yogas[yogaIndex];
-
-  [
-    "p-sunrise", "p-sunset", "p-rahukaal",
-    "p-abhijit", "p-hora", "p-choghadiya"
-  ].forEach(id => {
-    document.getElementById(id).textContent =
-      "सही गणना अगले चरण में जोड़ी जाएगी";
-  });
-}
-
-document.addEventListener(
-  "DOMContentLoaded",
-  calculateBasicPanchang
-);
-const cityInput = document.getElementById("panchang-place");
-console.log("City input:", cityInput);
-const cityResults = document.getElementById("panchang-city-results");
-
-let selectedCity = null;
-
-cityInput.addEventListener("input", async function () {
-  const query = cityInput.value.trim();
-
-  selectedCity = null;
-  cityResults.innerHTML = "";
-
-  if (query.length < 3) return;
+  if (!dateInput.value) {
+    result.textContent = "कृपया तारीख चुनें।";
+    return;
+  }
 
   try {
-    const response = await fetch(
-      "https://geocoding-api.open-meteo.com/v1/search?name=" +
-      encodeURIComponent(query) +
-      "&count=8&language=hi&format=json"
+    const timezone = selectedCity.timezone;
+    const observer = new Astronomy.Observer(
+      selectedCity.latitude,
+      selectedCity.longitude,
+      0
     );
 
-    const data = await response.json();
+    const midnight = localToUTC(
+      dateInput.value,
+      "00:00",
+      timezone
+    );
 
-    if (!data.results) {
-      cityResults.textContent = "शहर नहीं मिला।";
-      return;
+    const startTime = Astronomy.MakeTime(midnight);
+
+    // सूर्योदय
+    const sunrise = Astronomy.SearchRiseSet(
+      Astronomy.Body.Sun,
+      observer,
+      +1,
+      startTime,
+      2
+    );
+
+    if (!sunrise) {
+      throw new Error("इस तारीख का सूर्योदय नहीं मिला।");
     }
 
-    data.results.forEach(city => {
-      const item = document.createElement("div");
-      item.textContent =
-        city.name + ", " + (city.admin1 || "") +
-        ", " + city.country;
+    // सूर्यास्त
+    const sunset = Astronomy.SearchRiseSet(
+      Astronomy.Body.Sun,
+      observer,
+      -1,
+      sunrise,
+      1
+    );
 
-      item.style.padding = "10px";
-      item.style.borderBottom = "1px solid #ddd";
-      item.style.cursor = "pointer";
+    if (!sunset) {
+      throw new Error("सूर्यास्त नहीं मिला।");
+    }
 
-      item.onclick = function () {
-        cityInput.value = item.textContent;
+    // अगले दिन का सूर्योदय
+    const nextSunrise = Astronomy.SearchRiseSet(
+      Astronomy.Body.Sun,
+      observer,
+      +1,
+      sunset,
+      2
+    );
 
-        selectedCity = {
-          name: city.name,
-          latitude: city.latitude,
-          longitude: city.longitude,
-          timezone: city.timezone
-        };
+    if (!nextSunrise) {
+      throw new Error("अगले सूर्योदय की गणना नहीं हुई।");
+    }
 
-        cityResults.innerHTML = "";
-      };
+    const sunriseDate = sunrise.date;
+    const sunsetDate = sunset.date;
+    const nextSunriseDate = nextSunrise.date;
 
-      cityResults.appendChild(item);
-    });
+    // सूर्योदय पर सूर्य और चंद्रमा की स्थिति
+    const sun = Astronomy.SunPosition(sunrise);
+    const moon = Astronomy.EclipticGeoMoon(sunrise);
+
+    // लाहिड़ी के निकट अनुमानित अयनांश
+    const years =
+      (sunriseDate.getTime() - Date.UTC(2000, 0, 1)) /
+      (365.2425 * 86400000);
+
+    const ayanamsa = 23.85675 + years * 0.013968;
+
+    const sunLong =
+      (sun.elon - ayanamsa + 360) % 360;
+
+    const moonLong =
+      (moon.lon - ayanamsa + 360) % 360;
+
+    const diff = (moonLong - sunLong + 360) % 360;
+
+    // तिथि
+    const tithiIndex = Math.floor(diff / 12);
+
+    const tithis = [
+      "प्रतिपदा", "द्वितीया", "तृतीया", "चतुर्थी",
+      "पंचमी", "षष्ठी", "सप्तमी", "अष्टमी",
+      "नवमी", "दशमी", "एकादशी", "द्वादशी",
+      "त्रयोदशी", "चतुर्दशी", "पूर्णिमा"
+    ];
+
+    const tithi =
+      tithiIndex === 29
+        ? "अमावस्या"
+        : tithis[tithiIndex % 15];
+
+    const paksha =
+      tithiIndex < 15 ? "शुक्ल पक्ष" : "कृष्ण पक्ष";
+
+    // नक्षत्र
+    const nakshatras = [
+      "अश्विनी", "भरणी", "कृत्तिका", "रोहिणी",
+      "मृगशिरा", "आर्द्रा", "पुनर्वसु", "पुष्य",
+      "आश्लेषा", "मघा", "पूर्वा फाल्गुनी",
+      "उत्तरा फाल्गुनी", "हस्त", "चित्रा", "स्वाती",
+      "विशाखा", "अनुराधा", "ज्येष्ठा", "मूल",
+      "पूर्वाषाढ़ा", "उत्तराषाढ़ा", "श्रवण",
+      "धनिष्ठा", "शतभिषा", "पूर्वाभाद्रपद",
+      "उत्तराभाद्रपद", "रेवती"
+    ];
+
+    const nakIndex = Math.floor(moonLong / (360 / 27));
+
+    // योग
+    const yogas = [
+      "विष्कुम्भ", "प्रीति", "आयुष्मान", "सौभाग्य",
+      "शोभन", "अतिगण्ड", "सुकर्मा", "धृति",
+      "शूल", "गण्ड", "वृद्धि", "ध्रुव",
+      "व्याघात", "हर्षण", "वज्र", "सिद्धि",
+      "व्यतीपात", "वरीयान", "परिघ", "शिव",
+      "सिद्ध", "साध्य", "शुभ", "शुक्ल",
+      "ब्रह्म", "इन्द्र", "वैधृति"
+    ];
+
+    const yogaIndex = Math.floor(
+      ((sunLong + moonLong) % 360) / (360 / 27)
+    );
+
+    // करण
+    const karanaIndex = Math.floor(diff / 6);
+
+    const movingKaranas = [
+      "बव", "बालव", "कौलव", "तैतिल",
+      "गर", "वणिज", "विष्टि"
+    ];
+
+    let karana;
+
+    if (karanaIndex === 0) {
+      karana = "किंस्तुघ्न";
+    } else if (karanaIndex >= 57) {
+      karana = ["शकुनि", "चतुष्पद", "नाग"][karanaIndex - 57];
+    } else {
+      karana = movingKaranas[(karanaIndex - 1) % 7];
+    }
+
+    // सप्ताह का दिन
+    const [year, month, day] =
+      dateInput.value.split("-").map(Number);
+
+    const weekday = new Date(
+      Date.UTC(year, month - 1, day)
+    ).getUTCDay();
+
+    // दिन की अवधि
+    const dayDuration = sunsetDate - sunriseDate;
+    const nightDuration = nextSunriseDate - sunsetDate;
+
+    const segment = dayDuration / 8;
+
+    // राहुकाल
+    const rahuSegments = [8, 2, 7, 5, 6, 4, 3];
+
+    const rahuStart =
+      new Date(sunriseDate.getTime() +
+      (rahuSegments[weekday] - 1) * segment);
+
+    const rahuEnd =
+      new Date(rahuStart.getTime() + segment);
+
+    // अभिजीत मुहूर्त
+    const abhijitDuration = dayDuration / 15;
+
+    const midday =
+      sunriseDate.getTime() + dayDuration / 2;
+
+    const abhijitStart =
+      new Date(midday - abhijitDuration / 2);
+
+    const abhijitEnd =
+      new Date(midday + abhijitDuration / 2);
+
+    // 24 होरा
+    const horaLords = [
+      "शनि", "गुरु", "मंगल", "सूर्य",
+      "शुक्र", "बुध", "चंद्र"
+    ];
+
+    const dayLords = [
+      "सूर्य", "चंद्र", "मंगल", "बुध",
+      "गुरु", "शुक्र", "शनि"
+    ];
+
+    let lordIndex = horaLords.indexOf(dayLords[weekday]);
+
+    const horaNames = [];
+
+    for (let i = 0; i < 24; i++) {
+      const isDay = i < 12;
+
+      const start = isDay
+        ? sunriseDate.getTime() + i * segment
+        : sunsetDate.getTime() + (i - 12) * nightDuration / 12;
+
+      const duration = isDay
+        ? segment
+        : nightDuration / 12;
+
+      const end = start + duration;
+
+      horaNames.push(
+        `${i + 1}. ${horaLords[lordIndex]} होरा: ` +
+        `${timeText(new Date(start), timezone)} – ` +
+        `${timeText(new Date(end), timezone)}`
+      );
+
+      lordIndex = (lordIndex + 1) % 7;
+    }
+
+    // चौघड़िया
+    const dayChoghadiya = [
+      ["उद्वेग", "चर", "लाभ", "अमृत", "काल", "शुभ", "रोग", "उद्वेग"],
+      ["अमृत", "काल", "शुभ", "रोग", "उद्वेग", "चर", "लाभ", "अमृत"],
+      ["रोग", "उद्वेग", "चर", "लाभ", "अमृत", "काल", "शुभ", "रोग"],
+      ["लाभ", "अमृत", "काल", "शुभ", "रोग", "उद्वेग", "चर", "लाभ"],
+      ["शुभ", "रोग", "उद्वेग", "चर", "लाभ", "अमृत", "काल", "शुभ"],
+      ["चर", "लाभ", "अमृत", "काल", "शुभ", "रोग", "उद्वेग", "चर"],
+      ["काल", "शुभ", "रोग", "उद्वेग", "चर", "लाभ", "अमृत", "काल"]
+    ];
+
+    const nightChoghadiya = [
+      ["शुभ", "अमृत", "चर", "रोग", "काल", "लाभ", "उद्वेग", "शुभ"],
+      ["चर", "रोग", "काल", "लाभ", "उद्वेग", "शुभ", "अमृत", "चर"],
+      ["काल", "लाभ", "उद्वेग", "शुभ", "अमृत", "चर", "रोग", "काल"],
+      ["उद्वेग", "शुभ", "अमृत", "चर", "रोग", "काल", "लाभ", "उद्वेग"],
+      ["लाभ", "उद्वेग", "शुभ", "अमृत", "चर", "रोग", "काल", "लाभ"],
+      ["अमृत", "चर", "रोग", "काल", "लाभ", "उद्वेग", "शुभ", "अमृत"],
+      ["रोग", "काल", "लाभ", "उद्वेग", "शुभ", "अमृत", "चर", "रोग"]
+    ];
+
+    const choghadiyaList = [];
+
+    for (let i = 0; i < 8; i++) {
+      const start = sunriseDate.getTime() + i * segment;
+      const end = start + segment;
+
+      choghadiyaList.push(
+        `दिन ${dayChoghadiya[weekday][i]}: ` +
+        `${timeText(new Date(start), timezone)} – ` +
+        `${timeText(new Date(end), timezone)}`
+      );
+    }
+
+    const nightSegment = nightDuration / 8;
+
+    for (let i = 0; i < 8; i++) {
+      const start = sunsetDate.getTime() + i * nightSegment;
+      const end = start + nightSegment;
+
+      choghadiyaList.push(
+        `रात्रि ${nightChoghadiya[weekday][i]}: ` +
+        `${timeText(new Date(start), timezone)} – ` +
+        `${timeText(new Date(end), timezone)}`
+      );
+    }
+
+    // परिणाम दिखाएँ
+    document.getElementById("p-tithi").textContent = tithi;
+    document.getElementById("p-paksha").textContent = paksha;
+    document.getElementById("p-nakshatra").textContent = nakshatras[nakIndex];
+    document.getElementById("p-yoga").textContent = yogas[yogaIndex];
+    document.getElementById("p-karana").textContent = karana;
+
+    document.getElementById("p-sunrise").textContent =
+      timeText(sunriseDate, timezone);
+
+    document.getElementById("p-sunset").textContent =
+      timeText(sunsetDate, timezone);
+
+    document.getElementById("p-rahukaal").textContent =
+      timeText(rahuStart, timezone) + " – " +
+      timeText(rahuEnd, timezone);
+
+    document.getElementById("p-abhijit").textContent =
+      timeText(abhijitStart, timezone) + " – " +
+      timeText(abhijitEnd, timezone);
+
+    document.getElementById("p-hora").innerHTML =
+      horaNames.join("<br>");
+
+    document.getElementById("p-choghadiya").innerHTML =
+      choghadiyaList.join("<br>");
+
+    result.style.display = "block";
 
   } catch (error) {
-    cityResults.textContent = "शहर खोजने में समस्या हुई।";
+    result.innerHTML =
+      "पंचांग गणना में समस्या: " + error.message;
   }
-});
+}
+
+
 </script>
 </body>
 </html>
